@@ -1,7 +1,9 @@
+console.log('Loading event');
+
 var Groove = {
   sendRequest: function(path, method, params, context) {
     var http = require('https');
-    var token = 'YOUR_GROOVE_API_TOKEN';
+    var token = 'YOUR_TOKEN';
     var bodyString = JSON.stringify(params);
     var headers = {
       'Content-Type': 'application/json',
@@ -93,43 +95,47 @@ var Groove = {
 };
 
 exports.handler = function(event, context) {
-   // console.log('Loading event');
-   // console.log(JSON.stringify(event, null, '  '));
+  console.log(JSON.stringify(event, null, '  '));
 
-   for(i = 0; i < event.Records.length; ++i) {
-     encodedPayload = event.Records[i].kinesis.data;
-     // console.log('Encoded payload: ' + encodedPayload);
-     // Kinesis data is base64 encoded so decode here
-     payload = JSON.parse(new Buffer(encodedPayload, 'base64').toString('ascii'));
+  for(i = 0; i < event.Records.length; ++i) {
+    encodedPayload = event.Records[i].kinesis.data;
+    console.log('Encoded payload: ' + encodedPayload);
+    // Kinesis data is base64 encoded so decode here
+    payload = JSON.parse(new Buffer(encodedPayload, 'base64').toString('ascii'));
 
-     // console.log('Decoded payload: ' + JSON.stringify(payload));
+    console.log('Decoded payload: ' + JSON.stringify(payload));
 
-     var result = payload.text.split(' ');
+    if (!payload || !payload.text) {
+      context.done(null, 'Invalid payload');
+      return false;
+    }
 
-     if (result.length < 2) {
-        context.done(null, 'Invalid payload');
-        return false;
-     }
+    var result = payload.text.split(' ');
 
-     var command = result.shift();
-     var ticket = result.shift();
+    if (result.length < 2) {
+      context.done(null, 'Invalid payload');
+      return false;
+    }
 
-     if (command === 'assign') {
-       var assignee = result[0];
-       Groove.changeAssignee(ticket, assignee, context);
-     } else if (command === 'close') {
-       Groove.closeTicket(ticket, context);
-     } else if (command === 'open') {
-       Groove.openTicket(ticket, context);
-     } else if (command === 'spam') {
-       Groove.asSpam(ticket, context);
-     } else if (command === 'pending') {
-       Groove.asPending(ticket, context);
-     } else if (command === 'note') {
-       var note = result.join(' ');
-       Groove.addNote(ticket, note, context);
-     } else {
-       context.done(null, 'Cannot find command ' + command);
-     }
-   }
+    var command = result.shift();
+    var ticket = result.shift();
+
+    if (command === 'assign') {
+      var assignee = result[0];
+      Groove.changeAssignee(ticket, assignee, context);
+    } else if (command === 'close') {
+      Groove.closeTicket(ticket, context);
+    } else if (command === 'open') {
+      Groove.openTicket(ticket, context);
+    } else if (command === 'spam') {
+      Groove.asSpam(ticket, context);
+    } else if (command === 'pending') {
+      Groove.asPending(ticket, context);
+    } else if (command === 'note') {
+      var note = result.join(' ');
+      Groove.addNote(ticket, note, context);
+    } else {
+      context.done(null, 'Cannot find command ' + command);
+    }
+  }
 };
